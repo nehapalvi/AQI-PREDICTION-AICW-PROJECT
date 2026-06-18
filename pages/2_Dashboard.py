@@ -41,7 +41,6 @@ filtered_df = df[df['City'] == city_encoded]
 if filtered_df.empty:
     st.error("No data available for selected city")
 else:
-    st.success(f"Showing AQI insights for {city}")
 
     col1, col2 = st.columns(2)
 
@@ -53,7 +52,7 @@ else:
         fig1 = px.line(
             filtered_df, x='datetime', y='AQI',
             title="AQI Trend",
-            labels={'datetime': 'Date', 'AQI': 'AQI'}
+            labels={'datetime': 'Year', 'AQI': 'AQI'}
         )
         fig1.update_traces(line=dict(width=1.2))
         fig1.update_layout(height=300, margin=dict(t=40, b=20, l=20, r=20))
