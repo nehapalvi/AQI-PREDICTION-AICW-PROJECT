@@ -2,7 +2,7 @@
 
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
+import plotly.express as px
 import os
 
 from utils.mapping import reverse_city_mapping
@@ -16,6 +16,13 @@ BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 file_path = os.path.join(BASE_DIR, "data", "eda_dataset.csv")
 
 df = pd.read_csv(file_path)
+
+df['datetime'] = pd.to_datetime(
+    df['Year'].astype(str) + '-' +
+    df['Month'].astype(str).str.zfill(2) + '-' +
+    df['Day'].astype(str).str.zfill(2) + ' ' +
+    df['Hour'].astype(str).str.zfill(2) + ':00:00'
+)
 
 # ---------------------------
 # DROPDOWNS
@@ -36,101 +43,69 @@ if filtered_df.empty:
 else:
     st.success(f"Showing AQI insights for {city}")
 
+    col1, col2 = st.columns(2)
+
     # ===========================
     # GRAPH 1: AQI TREND
     # ===========================
-    st.subheader("📈 AQI Trend Over Time")
-
-    st.markdown("""
-    👉 This graph shows how AQI changes over time in the selected city.  
-    👉 Helps identify pollution spikes and overall trend (increasing/decreasing).
-    """)
-
-    fig1, ax1 = plt.subplots()
-    ax1.plot(filtered_df['AQI'])
-    ax1.set_title("AQI Trend")
-    ax1.set_xlabel("Time Index")
-    ax1.set_ylabel("AQI")
-    st.pyplot(fig1)
+    with col1:
+        st.subheader("📈 AQI Trend Over Time")
+        fig1 = px.line(
+            filtered_df, x='datetime', y='AQI',
+            title="AQI Trend",
+            labels={'datetime': 'Date', 'AQI': 'AQI'}
+        )
+        fig1.update_traces(line=dict(width=1.2))
+        fig1.update_layout(height=300, margin=dict(t=40, b=20, l=20, r=20))
+        st.plotly_chart(fig1, use_container_width=True)
+        st.caption("Pollution spikes and overall trend (increasing/decreasing).")
 
     # ===========================
     # GRAPH 2: PM2.5 vs AQI
     # ===========================
-    st.subheader("🌫 PM2.5 vs AQI Relationship")
+    with col2:
+        st.subheader("🌫 PM2.5 vs AQI")
+        fig2 = px.scatter(
+            filtered_df, x='PM2.5', y='AQI',
+            title="PM2.5 vs AQI",
+            labels={'PM2.5': 'PM2.5', 'AQI': 'AQI'},
+            opacity=0.4
+        )
+        fig2.update_traces(marker=dict(size=3))
+        fig2.update_layout(height=300, margin=dict(t=40, b=20, l=20, r=20))
+        st.plotly_chart(fig2, use_container_width=True)
+        st.caption("Higher PM2.5 = higher AQI (worse air quality).")
 
-    st.markdown("""
-    👉 This scatter plot shows relationship between PM2.5 and AQI.  
-    👉 Higher PM2.5 usually leads to higher AQI (bad air quality).
-    """)
-
-    fig2, ax2 = plt.subplots()
-    ax2.scatter(filtered_df['PM2.5'], filtered_df['AQI'])
-    ax2.set_xlabel("PM2.5")
-    ax2.set_ylabel("AQI")
-    ax2.set_title("PM2.5 vs AQI")
-    st.pyplot(fig2)
+    col3, col4 = st.columns(2)
 
     # ===========================
     # GRAPH 3: MONTHLY TREND
     # ===========================
-    st.subheader("📅 Monthly Average AQI")
-
-    st.markdown("""
-    👉 Shows average AQI for each month.  
-    👉 Helps identify seasonal pollution patterns (e.g., winter high pollution).
-    """)
-
-    monthly_avg = filtered_df.groupby('Month')['AQI'].mean()
-
-    fig3, ax3 = plt.subplots()
-    monthly_avg.plot(ax=ax3)
-    ax3.set_xlabel("Month")
-    ax3.set_ylabel("Average AQI")
-    ax3.set_title("Monthly AQI Trend")
-    st.pyplot(fig3)
+    with col3:
+        st.subheader("📅 Monthly Avg AQI")
+        monthly_avg = filtered_df.groupby('Month')['AQI'].mean().reset_index()
+        fig3 = px.line(
+            monthly_avg, x='Month', y='AQI',
+            title="Monthly AQI Trend",
+            labels={'Month': 'Month', 'AQI': 'Avg AQI'}
+        )
+        fig3.update_traces(line=dict(width=1.2))
+        fig3.update_layout(height=300, margin=dict(t=40, b=20, l=20, r=20))
+        st.plotly_chart(fig3, use_container_width=True)
+        st.caption("Seasonal pollution patterns (e.g., winter spikes).")
 
     # ===========================
     # GRAPH 4: POLLUTANT COMPARISON
     # ===========================
-    st.subheader("🧪 Pollutant Comparison")
-
-    st.markdown("""
-    👉 Compares average levels of major pollutants.  
-    👉 Helps identify which pollutant contributes most to air pollution.
-    """)
-
-    pollutants = ['PM2.5', 'PM10', 'NO2', 'CO']
-
-    fig4, ax4 = plt.subplots()
-    filtered_df[pollutants].mean().plot(kind='bar', ax=ax4)
-    ax4.set_title("Average Pollutant Levels")
-    st.pyplot(fig4)
-
-# ===========================
-# MODEL COMPARISON
-# ===========================
-
-st.subheader("🤖 Model Performance Comparison")
-
-st.markdown("""
-👉 This graph compares performance of different models using RMSE.  
-👉 Lower RMSE means better prediction accuracy.
-""")
-
-# 🔥 Replace these values with your actual results later
-model_results = {
-    "XGBoost": 35,
-    "Random Forest": 42,
-    "LSTM": 30
-}
-
-models = list(model_results.keys())
-errors = list(model_results.values())
-
-fig5, ax5 = plt.subplots()
-ax5.bar(models, errors)
-ax5.set_title("Model Comparison (RMSE)")
-ax5.set_ylabel("RMSE (Lower is Better)")
-st.pyplot(fig5)
-
-
+    with col4:
+        st.subheader("🧪 Pollutant Comparison")
+        pollutants = ['PM2.5', 'PM10', 'NO2', 'CO']
+        pollutant_df = filtered_df[pollutants].mean().reset_index()
+        pollutant_df.columns = ['Pollutant', 'Avg Level']
+        fig4 = px.bar(
+            pollutant_df, x='Pollutant', y='Avg Level',
+            title="Avg Pollutant Levels"
+        )
+        fig4.update_layout(height=300, margin=dict(t=40, b=20, l=20, r=20))
+        st.plotly_chart(fig4, use_container_width=True)
+        st.caption("Which pollutant contributes most to air pollution.")
